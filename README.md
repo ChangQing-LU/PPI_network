@@ -2,6 +2,13 @@
 
 This repository keeps the runnable workflow in `script1/`. Large reference databases, local Python environments, logs, and generated outputs are intentionally excluded from Git so other users can clone the code and reproduce the workflow with their own `data/` directory.
 
+Clean-case runs produce two result tables per sample:
+
+```text
+*_ppi_score.csv    Pure PPI table; columns match the PPI output table below.
+*_final_score.csv  Final phenotype + VEP + PPI fusion table; see FINAL_SCORE_README.md.
+```
+
 ## Quick Start
 
 ```bash
@@ -93,6 +100,63 @@ ppi_final = sum(W_i * score_i for available axes)
 | `t_gene_count` | 本次最终 T 集基因数 |
 | `top_neighbors_json` | STRING 互作最强的 Top N 邻居及 D/T 标签 |
 | `top_neighbors_count` | 返回的邻居数量 |
+
+上表是纯 PPI 输出，字段与 README 保持一致。clean-case 病例入口会同时生成两张表：
+
+```text
+ppi_score.csv    # 纯 PPI 表，字段与上表一致
+final_score.csv  # 最终病例融合表，合并 phenotype、VEP 和 PPI，详见 FINAL_SCORE_README.md
+```
+
+### Clean-case 最终 CSV 字段
+
+`run_clean_case.py`、`/score/clean-case`、`/score/clean-case/async` 和 `/score/clean-case/upload/async` 还会生成最终病例融合表。使用 `output_all_ppi_fields=true` 时，最终 CSV 字段如下：
+
+| 字段 | 来源 | 说明 |
+| --- | --- | --- |
+| `final_rank` | 融合结果 | 最终综合排名；只给 `gene_score` 非空且 `in_network=true` 的基因编号，不是文件行号 |
+| `gene` | 候选基因 | 候选基因 SYMBOL |
+| `combined_score` | 融合结果 | `(gene_score + ppi_final) / 2`；如果缺少 `gene_score` 或不在 STRING 中则为空 |
+| `gene_score` | phenotype CSV | 表型-gene 打分；原始输入为空时这里也为空 |
+| `ppi_final` | PPI 表 | 最终 PPI 综合分数 |
+| `in_network` | PPI 表 | 是否存在于 STRING 网络 |
+| `disease_score` | PPI 表 | 与疾病锚点 `D` 的互作和距离分数 |
+| `tissue_score` | PPI 表 | 与组织核心锚点 `T` 的互作和距离分数 |
+| `topology_score` | PPI 表 | 全局 degree 和 betweenness 拓扑分数 |
+| `score_mode` | PPI 表 | 本次融合模式 |
+| `score_weight_sum` | PPI 表 | 本次参与 PPI 融合的权重和 |
+| `note` | PPI 表 | 边界情况标记 |
+| `gene_in_d` | PPI 表 | 该候选基因是否进入本次疾病锚点 `D` |
+| `gene_d_evidence_score` | PPI 表 | 该候选基因在 D 集证据字典中的加权证据分；未命中为 0 |
+| `gene_d_sources_json` | PPI 表 | 支持该候选基因进入 D 集的来源列表 JSON |
+| `gene_in_t` | PPI 表 | 该候选基因是否进入本次组织核心锚点 `T` |
+| `gene_t_weight` | PPI 表 | 该候选基因的 T 层支持权重；未命中为 0 |
+| `gene_t_layers_json` | PPI 表 | 支持该候选基因进入 T 集的层来源 JSON |
+| `gene_t_tissues_json` | PPI 表 | 支持该候选基因进入 T 集的组织列表 JSON |
+| `mapped_tissues_json` | PPI 表 | 本次 HPO 解析得到并按映射次数排序取 Top 3 的组织列表 JSON |
+| `d_gene_count` | PPI 表 | 本次最终 D 集基因数 |
+| `t_gene_count` | PPI 表 | 本次最终 T 集基因数 |
+| `top_neighbors_json` | PPI 表 | STRING 互作最强的 Top N 邻居及 D/T 标签 |
+| `top_neighbors_count` | PPI 表 | 返回的邻居数量 |
+| `gene_rank` | phenotype CSV | phenotype-gene 输入表中的基因排名 |
+| `ppi_rank` | PPI 表 | 仅按 `ppi_final` 排序得到的 PPI 排名 |
+| `best_pathogenic_rank` | VEP CSV | 该基因所有 VEP 记录中最小的 `pathogenic_rank` |
+| `variant_row_count` | VEP CSV | VEP 表中落到该基因的记录数 |
+| `max_cadd_phred` | VEP CSV | 该基因所有 VEP 记录中的最大 `cadd_phred` |
+| `mapped_tissues` | PPI 表 | 本次映射组织的逗号分隔字符串，便于表格查看 |
+| `mapped_tissue_counts_json` | PPI 表 | 本次 HPO 到组织映射计数字典 JSON |
+| `conclusion_code` | phenotype CSV | phenotype-gene 输入表中的结论标签 |
+| `best_disease_score` | phenotype CSV | phenotype-gene 输入表中的最佳疾病匹配分 |
+| `best_disease_name` | phenotype CSV | phenotype-gene 输入表中的最佳疾病名 |
+| `best_omim_id` | phenotype CSV | phenotype-gene 输入表中的最佳 OMIM ID |
+| `best_orpha_id` | phenotype CSV | phenotype-gene 输入表中的最佳 Orphanet ID |
+| `best_mondo_id` | phenotype CSV | phenotype-gene 输入表中的最佳 MONDO ID |
+| `best_disease_match_status` | phenotype CSV | phenotype-gene 输入表中的疾病匹配状态 |
+| `mapping_basis` | phenotype CSV | phenotype-gene 输入表中的匹配依据 |
+
+`final_rank` 是最终融合排名，不是所有输出行的连续编号。某个基因如果有 `ppi_final` 但 phenotype 输入中的 `gene_score` 为空，最终 CSV 会保留该基因及其 PPI 字段，但 `combined_score` 和 `final_rank` 会为空。需要只看 PPI 排名时使用 `ppi_score.csv` 或最终表中的 `ppi_rank`。
+
+`gene_d_sources_json`、`gene_t_layers_json`、`gene_t_tissues_json` 只有在 `include_evidence_json=true` 或 `output_all_ppi_fields=true` 时输出；`top_neighbors_json` 和 `top_neighbors_count` 只有在 `include_neighbors=true` 或 `output_all_ppi_fields=true` 时输出。
 
 完整的本次运行中间结果不再重复写入每一行结果表。Python API 可从 `scorer.last_audit` 读取；命令行可用 `--audit-json audit.json` 单独写出，其中包含输入、最终 `D`、`T`、证据分、支持来源、T 层来源和映射组织。
 
@@ -383,10 +447,11 @@ audit.json
   --vep-output-csv ../input/vep_output.csv \
   --hpo-file ../input/hpo_ids.txt \
   --output-csv ../output/case5_final_score.csv \
+  --ppi-output-csv ../output/case5_ppi_score.csv \
   --clean-output-dir
 ```
 
-`--clean-output-dir` 会在写入前清理输出目录里的旧普通文件，跑完目录中只保留 `--output-csv` 指定的最终 CSV。脚本会拒绝清理项目根目录和 `script1/`，避免误删工作区。
+`--clean-output-dir` 会在写入前清理输出目录里的旧普通文件，跑完目录中保留 `--output-csv` 指定的最终 CSV 和 `--ppi-output-csv` 指定的纯 PPI CSV。脚本会拒绝清理项目根目录和 `script1/`，避免误删工作区。若不指定 `--ppi-output-csv`，会从 `--output-csv` 自动派生，例如 `case5_final_score.csv` 对应 `case5_ppi_score.csv`。
 
 API 也提供同样的干净病例入口，路径为 `POST /score/clean-case`。这个接口内部复用 `run_clean_case.py` 的逻辑，默认只写最终 CSV，不保留中间 CSV。
 
@@ -398,6 +463,7 @@ curl -X POST http://127.0.0.1:9000/score/clean-case \
     "vep_output_csv": "../input/vep_output.csv",
     "hpo_file": "../input/hpo_ids.txt",
     "output_csv": "../output/case5_api_clean/final_score.csv",
+    "ppi_output_csv": "../output/case5_api_clean/ppi_score.csv",
     "clean_output_dir": true
   }'
 ```
