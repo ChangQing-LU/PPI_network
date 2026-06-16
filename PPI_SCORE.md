@@ -381,14 +381,16 @@ audit.json
 API 也提供同样的干净病例入口，路径为 `POST /score/clean-case`。这个接口内部复用 `run_clean_case.py` 的逻辑，默认只写最终 CSV，不保留中间 CSV。
 
 ```bash
-curl -X POST http://127.0.0.1:9000/score/clean-case \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "phenotype_gene_csv": "../input/gene_phenotype_score.csv",
-    "vep_output_csv": "../input/vep_output.csv",
-    "hpo_file": "../input/hpo_ids.txt",
-    "output_csv": "../output/case5_api_clean/final_score.csv",
-    "clean_output_dir": true
+curl -X POST http://127.0.0.1:9000/score/clean-case/upload/async \
+  -F "phenotype_gene_csv=@/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/gene_phenotype_score.csv" \
+  -F "vep_output_csv=@/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/tes1.vep.csv" \
+  -F "hpo_file=@/path/to/hpo_ids.txt" \
+  -F "output_csv=/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/output/case_final_score.csv" \
+  -F "clean_output_dir=true" \
+  -F "candidate_top_n=30000" \
+  -F "output_all_ppi_fields=true" \
+  -F "include_audit=false" \
+  -F "vep_chunksize=250000"
   }'
 ```
 
