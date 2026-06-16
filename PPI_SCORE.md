@@ -164,69 +164,7 @@ ppi_final = sum(W_i * score_i for available axes)
 | `mapped_tissue_counts` | 所有被 HPO 映射到的组织及其计数，按排名顺序记录 |
 | `hpo_tissue_map` | 每个 HPO 映射到的 coarse tissue 列表 |
 
-## FastAPI 服务
 
-配置已经抽到 `config.py`，命令行和 API 共用同一套 `RunParameters` 校验逻辑。默认数据库目录为项目根目录下的 `data/`，也可以通过环境变量 `RARE_PPI_DATA_DIR` 或请求体里的 `data_dir` 覆盖。
-
-启动服务：
-
-```bash
-cd script1
-./run_api.sh
-```
-
-接口：
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `GET` | `/health` | 检查服务、默认数据目录和已缓存模型数 |
-| `GET` | `/config` | 返回当前默认配置；可加 `?include_missing_files=true` |
-| `POST` | `/initialize` | 按参数预加载数据库，首次调用耗时较长 |
-| `POST` | `/score` | 输入候选基因和 HPO，生成 CSV 文件并返回 `csv_path` |
-| `POST` | `/score/async` | 提交异步评分任务，立即返回 `job_id` 和 `status=queuing` |
-| `GET` | `/score/{job_id}` | 查询异步任务结果 |
-| `GET` | `/score/{job_id}/csv` | 下载异步任务生成的 CSV 文件 |
-
-所有 API 都返回顶层 `status` 字段：
-
-| `status` | 含义 |
-| --- | --- |
-| `completion` | 完成 |
-| `failure` | 失败 |
-| `queuing` | 等待 |
-
-示例：
-
-```bash
-curl -X POST http://127.0.0.1:8000/score \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "candidate_genes": ["ABCA4", "USH2A", "CEP290"],
-    "hpo_ids": ["HP:0000488", "HP:0000505"]
-  }'
-```
-
-同步评分默认会把 CSV 写到项目根目录下的 `output/ppi_score_<随机ID>.csv`，响应示例：
-
-```json
-{
-  "status": "completion",
-  "count": 3,
-  "output_format": "csv",
-  "csv_path": "../output/ppi_score_xxx.csv",
-  "columns": ["gene", "in_network", "disease_score"]
-}
-```
-
-也可以在请求中指定输出位置：
-
-```json
-{
-  "candidate_genes": ["ABCA4", "USH2A", "CEP290"],
-  "hpo_ids": ["HP:0000488", "HP:0000505"],
-  "output_csv": "../output/my_result.csv"
-}
-```
 
 ## 数据依赖
 
