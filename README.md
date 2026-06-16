@@ -23,6 +23,10 @@ phenotype-gene CSV + VEP CSV + HPO 列表
 *_final_score.csv  最终病例融合表，合并 phenotype、VEP 和 PPI 证据
 ```
 
+## PPI_SCORE 流程图
+
+![PPI_SCORE：从表型到网络优先级](docs/images/ppi_score_overview.png)
+
 ## 使用方法
 
 ### 1. 克隆项目
